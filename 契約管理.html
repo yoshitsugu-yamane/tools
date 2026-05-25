@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>契約管理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f6fa;
+      --white: #ffffff;
+      --border: #e4e7ef;
+      --text: #1a202c;
+      --muted: #718096;
+      --accent: #3b5bdb;
+      --accent-lt: #eef2ff;
+      --red: #e03131;
+      --green: #2f9e44;
+      --orange: #e8590c;
+      --yellow: #e67700;
+      --gray: #adb5bd;
+      --r: 12px;
+      --sh: 0 2px 8px rgba(0,0,0,0.07);
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ---- Layout ---- */
+    .app { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 220px; flex-shrink: 0;
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 24px 14px; gap: 3px;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    }
+
+    .logo { font-size: 17px; font-weight: 800; padding: 0 8px; margin-bottom: 20px; letter-spacing: -.3px; }
+
+    .nav-section { font-size: 10px; font-weight: 700; color: var(--gray); padding: 14px 8px 6px; letter-spacing: .8px; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 10px; border-radius: 8px; cursor: pointer;
+      font-size: 13.5px; color: var(--muted);
+      transition: background .15s, color .15s; user-select: none;
+    }
+    .nav-item:hover { background: var(--bg); color: var(--text); }
+    .nav-item.active { background: var(--accent-lt); color: var(--accent); font-weight: 600; }
+
+    .badge { margin-left: auto; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: var(--border); color: var(--muted); }
+    .nav-item.active .badge { background: var(--accent); color: #fff; }
+    .badge.alert { background: #fff5f5; color: var(--red); }
+
+    .main { flex: 1; padding: 30px 26px; overflow-y: auto; }
+
+    /* ---- Top bar ---- */
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 12px; }
+    .topbar h2 { font-size: 21px; font-weight: 700; }
+
+    .btn { padding: 9px 17px; border-radius: 8px; border: none; cursor: pointer; font-size: 13.5px; font-weight: 600; transition: opacity .15s, transform .1s; white-space: nowrap; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: .87; }
+    .btn-ghost { background: none; border: 1.5px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: #fff5f5; color: var(--red); border: 1.5px solid #ffc9c9; }
+    .btn-danger:hover { background: #ffc9c9; }
+
+    /* ---- Stats ---- */
+    .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+    .stat { background: var(--white); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--sh); }
+    .stat-label { font-size: 11.5px; color: var(--muted); margin-bottom: 5px; }
+    .stat-value { font-size: 26px; font-weight: 800; line-height: 1; }
+    .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ---- Filters ---- */
+    .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filters input[type="text"] {
+      flex: 1; min-width: 160px;
+      padding: 8px 13px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13.5px; outline: none;
+    }
+    .filters input[type="text"]:focus { border-color: var(--accent); }
+    .filters select { padding: 8px 11px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13.5px; background: var(--white); outline: none; }
+
+    /* ---- Table ---- */
+    .table-wrap { background: var(--white); border-radius: var(--r); box-shadow: var(--sh); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th { text-align: left; padding: 11px 14px; background: #f9fafc; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafbff; }
+    td { padding: 12px 14px; vertical-align: middle; }
+
+    .contract-name { font-weight: 600; }
+    .contract-client { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* Status pills */
+    .pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+    .pill-締結済み  { background: #d3f9d8; color: #1e5c2a; }
+    .pill-審議中    { background: #fff3bf; color: #7d5a00; }
+    .pill-更新待ち  { background: #ffe8cc; color: #a04000; }
+    .pill-終了      { background: #f1f3f5; color: #868e96; }
+    .pill-解除      { background: #ffe0e0; color: #a00; }
+
+    .type-chip { display: inline-flex; padding: 2px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 600; background: var(--accent-lt); color: var(--accent); white-space: nowrap; }
+
+    .amount-cell { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .date-cell { font-size: 12.5px; white-space: nowrap; }
+    .date-cell.expired { color: var(--red); font-weight: 700; }
+    .date-cell.soon    { color: var(--orange); font-weight: 700; }
+
+    .alert-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); margin-right: 5px; vertical-align: middle; }
+
+    .row-actions { display: flex; gap: 5px; opacity: 0; transition: opacity .15s; }
+    tbody tr:hover .row-actions { opacity: 1; }
+
+    .empty { text-align: center; color: var(--muted); padding: 48px 0; font-size: 13.5px; }
+
+    /* ---- Modals ---- */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.38); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+    .overlay.open { display: flex; }
+
+    .modal { background: var(--white); border-radius: var(--r); width: 100%; max-width: 600px; max-height: 92vh; overflow-y: auto; padding: 26px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+    .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+
+    .fg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .ff { grid-column: 1/-1; }
+
+    label { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+    input[type="text"], input[type="date"], input[type="number"], select, textarea {
+      width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 13.5px; font-family: inherit; outline: none; background: var(--white);
+      transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 72px; }
+
+    .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+
+    /* ---- Slide-over detail ---- */
+    .slideover-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 200; justify-content: flex-end; }
+    .slideover-bg.open { display: flex; }
+    .slideover {
+      background: var(--white); width: 440px; max-width: 95vw; height: 100vh;
+      overflow-y: auto; box-shadow: -4px 0 28px rgba(0,0,0,.14);
+      padding: 26px; display: flex; flex-direction: column; gap: 20px;
+    }
+    .sov-header { display: flex; align-items: flex-start; justify-content: space-between; }
+    .sov-header h3 { font-size: 19px; font-weight: 700; line-height: 1.3; flex: 1; }
+    .x-btn { background: none; border: none; font-size: 19px; cursor: pointer; color: var(--muted); padding: 2px 7px; border-radius: 6px; }
+    .x-btn:hover { background: var(--bg); }
+
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .meta-item label { font-size: 10.5px; font-weight: 700; color: var(--gray); margin-bottom: 3px; }
+    .meta-item .val { font-size: 14px; font-weight: 500; }
+
+    .sec-title { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px; letter-spacing: .4px; }
+
+    .checklist { display: flex; flex-direction: column; gap: 6px; }
+    .chk-item { display: flex; align-items: center; gap: 9px; background: var(--bg); padding: 8px 11px; border-radius: 8px; font-size: 13.5px; }
+    .chk-item input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
+    .chk-item .chk-txt.done { text-decoration: line-through; color: var(--gray); }
+    .chk-item .del-c { margin-left: auto; background: none; border: none; color: var(--gray); cursor: pointer; font-size: 13px; }
+    .chk-item .del-c:hover { color: var(--red); }
+
+    .add-row { display: flex; gap: 7px; }
+    .add-row input { flex: 1; }
+
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .tl-item { display: flex; gap: 12px; padding-bottom: 14px; position: relative; }
+    .tl-item:not(:last-child)::before { content:''; position: absolute; left: 7px; top: 18px; bottom: 0; width: 2px; background: var(--border); }
+    .tl-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--border); flex-shrink: 0; margin-top: 2px; border: 2px solid var(--white); box-shadow: 0 0 0 2px var(--border); }
+    .tl-dot.done { background: var(--accent); box-shadow: 0 0 0 2px var(--accent-lt); }
+    .tl-content { font-size: 13px; }
+    .tl-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .renewal-box { background: #fff9db; border: 1.5px solid #ffe066; border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+    .renewal-box.danger { background: #fff5f5; border-color: #ffc9c9; }
+
+    /* Alert banner */
+    .alert-banner { background: #fff9db; border: 1.5px solid #ffe066; border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+    .alert-banner.hide { display: none; }
+
+    @media (max-width: 720px) {
+      .sidebar { display: none; }
+      .stats { grid-template-columns: repeat(2,1fr); }
+      .main { padding: 16px 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">📄 契約管理</div>
+
+    <div class="nav-section">ステータス</div>
+    <div class="nav-item active" onclick="setNav('all')"    id="n-all">すべて    <span class="badge" id="c-all">0</span></div>
+    <div class="nav-item"        onclick="setNav('締結済み')" id="n-締結済み">✅ 締結済み <span class="badge" id="c-締結済み">0</span></div>
+    <div class="nav-item"        onclick="setNav('審議中')"  id="n-審議中">🟡 審議中   <span class="badge" id="c-審議中">0</span></div>
+    <div class="nav-item"        onclick="setNav('更新待ち')" id="n-更新待ち">🟠 更新待ち <span class="badge" id="c-更新待ち">0</span></div>
+    <div class="nav-item"        onclick="setNav('終了')"    id="n-終了">⚪ 終了     <span class="badge" id="c-終了">0</span></div>
+    <div class="nav-item"        onclick="setNav('解除')"    id="n-解除">🔴 解除     <span class="badge" id="c-解除">0</span></div>
+
+    <div class="nav-section">アラート</div>
+    <div class="nav-item"        onclick="setNav('expiring')" id="n-expiring">⚠️ 期限60日以内 <span class="badge alert" id="c-expiring">0</span></div>
+    <div class="nav-item"        onclick="setNav('expired')"  id="n-expired">🚨 期限超過 <span class="badge alert" id="c-expired">0</span></div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <h2 id="page-title">すべての契約</h2>
+      <button class="btn btn-primary" onclick="openNew()">＋ 新規契約</button>
+    </div>
+
+    <!-- Alert banner -->
+    <div class="alert-banner" id="alertBanner">
+      <span>⚠️</span>
+      <span id="alertText"></span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">有効契約数</div>
+        <div class="stat-value" id="s-active" style="color:var(--green)">0</div>
+        <div class="stat-sub">締結済み</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">年間契約総額</div>
+        <div class="stat-value" id="s-total" style="color:var(--accent); font-size:20px">0</div>
+        <div class="stat-sub">万円（締結済み）</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">60日以内に期限</div>
+        <div class="stat-value" id="s-expiring" style="color:var(--orange)">0</div>
+        <div class="stat-sub">件</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">期限超過</div>
+        <div class="stat-value" id="s-expired" style="color:var(--red)">0</div>
+        <div class="stat-sub">件（要対応）</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <input type="text" id="q" placeholder="契約名・取引先で検索..." oninput="render()">
+      <select id="fType" onchange="render()">
+        <option value="">すべての種別</option>
+        <option>業務委託</option>
+        <option>NDA</option>
+        <option>売買</option>
+        <option>サービス利用</option>
+        <option>賃貸借</option>
+        <option>雇用</option>
+        <option>その他</option>
+      </select>
+      <select id="fSort" onchange="render()">
+        <option value="end">終了日順</option>
+        <option value="start">開始日順</option>
+        <option value="amount">金額順</option>
+        <option value="updated">更新順</option>
+      </select>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>契約名 / 取引先</th>
+            <th>種別</th>
+            <th>ステータス</th>
+            <th>開始日</th>
+            <th>終了日</th>
+            <th style="text-align:right">金額（万円）</th>
+            <th>自動更新</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbl"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none">契約がありません</div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== 編集モーダル ===== -->
+<div class="overlay" id="editOv" onclick="closeEdit(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="editTitle">新規契約</div>
+    <div class="fg">
+      <div class="ff">
+        <label>契約名 *</label>
+        <input type="text" id="f-name" placeholder="例：業務委託基本契約">
+      </div>
+      <div>
+        <label>取引先名 *</label>
+        <input type="text" id="f-party" placeholder="例：株式会社〇〇">
+      </div>
+      <div>
+        <label>担当者</label>
+        <input type="text" id="f-owner" placeholder="例：山田">
+      </div>
+      <div>
+        <label>種別</label>
+        <select id="f-type">
+          <option>業務委託</option><option>NDA</option><option>売買</option>
+          <option>サービス利用</option><option>賃貸借</option><option>雇用</option><option>その他</option>
+        </select>
+      </div>
+      <div>
+        <label>ステータス</label>
+        <select id="f-status">
+          <option>審議中</option><option>締結済み</option><option>更新待ち</option>
+          <option>終了</option><option>解除</option>
+        </select>
+      </div>
+      <div>
+        <label>契約開始日</label>
+        <input type="date" id="f-start">
+      </div>
+      <div>
+        <label>契約終了日</label>
+        <input type="date" id="f-end">
+      </div>
+      <div>
+        <label>金額（万円）</label>
+        <input type="number" id="f-amount" placeholder="例：120" min="0">
+      </div>
+      <div>
+        <label>支払いサイクル</label>
+        <select id="f-cycle">
+          <option value="">—</option>
+          <option>月額</option><option>四半期</option><option>半年</option><option>年額</option><option>一括</option>
+        </select>
+      </div>
+      <div>
+        <label>自動更新</label>
+        <select id="f-auto">
+          <option value="0">なし</option>
+          <option value="1">あり</option>
+        </select>
+      </div>
+      <div>
+        <label>更新通知（終了日の何日前）</label>
+        <select id="f-notify">
+          <option value="30">30日前</option>
+          <option value="60" selected>60日前</option>
+          <option value="90">90日前</option>
+        </select>
+      </div>
+      <div class="ff">
+        <label>メモ・特記事項</label>
+        <textarea id="f-memo" placeholder="解約条件、更新時の注意点など"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="delBtn" onclick="deleteContract()" style="visibility:hidden">削除</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="closeEdit()">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveContract()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 詳細スライドオーバー ===== -->
+<div class="slideover-bg" id="sovBg" onclick="closeSov(event)">
+  <div class="slideover" onclick="event.stopPropagation()">
+    <div class="sov-header">
+      <h3 id="d-name">—</h3>
+      <button class="x-btn" onclick="closeSov()">✕</button>
+    </div>
+
+    <div id="renewalBox"></div>
+
+    <div class="meta-grid">
+      <div class="meta-item"><label>取引先</label><div class="val" id="d-party">—</div></div>
+      <div class="meta-item"><label>担当者</label><div class="val" id="d-owner">—</div></div>
+      <div class="meta-item"><label>種別</label><div class="val" id="d-type">—</div></div>
+      <div class="meta-item"><label>ステータス</label><div class="val" id="d-status">—</div></div>
+      <div class="meta-item"><label>契約開始</label><div class="val" id="d-start">—</div></div>
+      <div class="meta-item"><label>契約終了</label><div class="val" id="d-end">—</div></div>
+      <div class="meta-item"><label>金額</label><div class="val" id="d-amount">—</div></div>
+      <div class="meta-item"><label>支払いサイクル</label><div class="val" id="d-cycle">—</div></div>
+      <div class="meta-item"><label>自動更新</label><div class="val" id="d-auto">—</div></div>
+      <div class="meta-item"><label>更新通知</label><div class="val" id="d-notify">—</div></div>
+    </div>
+
+    <div>
+      <div class="sec-title">契約マイルストーン</div>
+      <div class="timeline" id="d-timeline"></div>
+    </div>
+
+    <div>
+      <div class="sec-title">チェックリスト（更新・解約手続き等）</div>
+      <div class="checklist" id="d-checks"></div>
+      <div class="add-row" style="margin-top:8px">
+        <input type="text" id="newCheck" placeholder="チェック項目を追加...">
+        <button class="btn btn-primary" style="padding:8px 13px" onclick="addCheck()">＋</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sec-title">メモ</div>
+      <textarea id="d-memo" rows="4" oninput="saveMemo()" placeholder="メモを入力..."></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;padding-top:4px">
+      <button class="btn btn-ghost" style="flex:1" onclick="openEdit(currentId)">編集</button>
+      <button class="btn btn-primary" style="flex:1" onclick="setStatusFromDetail('締結済み')">締結済みにする</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let contracts = JSON.parse(localStorage.getItem('contracts_v1') || '[]');
+  let navFilter = 'all';
+  let editId = null;
+  let currentId = null;
+
+  const today = () => new Date().toISOString().slice(0,10);
+
+  function save() { localStorage.setItem('contracts_v1', JSON.stringify(contracts)); }
+
+  function daysDiff(d) {
+    if (!d) return null;
+    return Math.floor((new Date(d) - new Date(today())) / 86400000);
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const [y,m,day] = d.split('-');
+    return `${y}/${m}/${day}`;
+  }
+
+  function fmtAmt(v) {
+    if (!v && v !== 0) return '—';
+    return Number(v).toLocaleString();
+  }
+
+  function endClass(d, status) {
+    if (status === '終了' || status === '解除') return '';
+    const diff = daysDiff(d);
+    if (diff === null) return '';
+    if (diff < 0) return 'expired';
+    if (diff <= 60) return 'soon';
+    return '';
+  }
+
+  // ---- Render ----
+  function render() {
+    const q = document.getElementById('q').value.toLowerCase();
+    const fType = document.getElementById('fType').value;
+    const fSort = document.getElementById('fSort').value;
+
+    let list = contracts.filter(c => {
+      if (navFilter === 'expiring') {
+        const d = daysDiff(c.end); return d !== null && d >= 0 && d <= 60 && c.status !== '終了' && c.status !== '解除';
+      }
+      if (navFilter === 'expired') {
+        const d = daysDiff(c.end); return d !== null && d < 0 && c.status !== '終了' && c.status !== '解除';
+      }
+      if (navFilter !== 'all' && c.status !== navFilter) return false;
+      if (fType && c.type !== fType) return false;
+      if (q && !c.name.toLowerCase().includes(q) && !((c.party||'').toLowerCase().includes(q))) return false;
+      return true;
+    });
+
+    list.sort((a,b) => {
+      if (fSort === 'end')     { return (a.end||'9999') < (b.end||'9999') ? -1 : 1; }
+      if (fSort === 'start')   { return (a.start||'') < (b.start||'') ? -1 : 1; }
+      if (fSort === 'amount')  { return (Number(b.amount)||0) - (Number(a.amount)||0); }
+      if (fSort === 'updated') { return (b.updated||0) - (a.updated||0); }
+      return 0;
+    });
+
+    const tbl = document.getElementById('tbl');
+    const emptyEl = document.getElementById('empty');
+    if (list.length === 0) { tbl.innerHTML=''; emptyEl.style.display='block'; }
+    else {
+      emptyEl.style.display='none';
+      tbl.innerHTML = list.map(c => {
+        const ec = endClass(c.end, c.status);
+        const hasDot = ec === 'expired' || ec === 'soon';
+        return `<tr onclick="openDetail('${c.id}')">
+          <td>
+            <div class="contract-name">${hasDot ? '<span class="alert-dot"></span>' : ''}${escH(c.name)}</div>
+            ${c.party ? `<div class="contract-client">${escH(c.party)}</div>` : ''}
+          </td>
+          <td><span class="type-chip">${escH(c.type)}</span></td>
+          <td><span class="pill pill-${c.status}">${c.status}</span></td>
+          <td class="date-cell">${fmtDate(c.start)}</td>
+          <td class="date-cell ${ec}">${fmtDate(c.end)}${ec==='soon' ? ` <span style="font-size:11px">(${daysDiff(c.end)}日)</span>` : ec==='expired' ? ' 超過' : ''}</td>
+          <td class="amount-cell">${c.amount ? fmtAmt(c.amount)+' 万' : '—'}</td>
+          <td style="font-size:12px;color:${c.autoRenew==='1'?'var(--green)':'var(--gray)'}">
+            ${c.autoRenew==='1' ? '✔ あり' : '—'}
+          </td>
+          <td>
+            <div class="row-actions" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px" onclick="openEdit('${c.id}')">編集</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // sidebar counts
+    const all = contracts;
+    ['all','締結済み','審議中','更新待ち','終了','解除'].forEach(s => {
+      const cnt = s==='all' ? all.length : all.filter(c=>c.status===s).length;
+      document.getElementById('c-'+s).textContent = cnt;
+    });
+    const expiring = all.filter(c => { const d=daysDiff(c.end); return d!==null&&d>=0&&d<=60&&c.status!=='終了'&&c.status!=='解除'; }).length;
+    const expired  = all.filter(c => { const d=daysDiff(c.end); return d!==null&&d<0&&c.status!=='終了'&&c.status!=='解除'; }).length;
+    document.getElementById('c-expiring').textContent = expiring;
+    document.getElementById('c-expired').textContent  = expired;
+
+    // stats
+    const active = all.filter(c=>c.status==='締結済み');
+    document.getElementById('s-active').textContent   = active.length;
+    document.getElementById('s-total').textContent    = active.reduce((s,c)=>s+(Number(c.amount)||0),0).toLocaleString();
+    document.getElementById('s-expiring').textContent = expiring;
+    document.getElementById('s-expired').textContent  = expired;
+
+    // alert banner
+    const ab = document.getElementById('alertBanner');
+    if (expiring > 0 || expired > 0) {
+      ab.classList.remove('hide');
+      let msgs = [];
+      if (expired>0)  msgs.push(`<strong>${expired}件</strong>が期限超過`);
+      if (expiring>0) msgs.push(`<strong>${expiring}件</strong>が60日以内に期限`);
+      document.getElementById('alertText').innerHTML = msgs.join('、') + 'です。確認してください。';
+    } else {
+      ab.classList.add('hide');
+    }
+  }
+
+  // ---- Nav ----
+  function setNav(f) {
+    navFilter = f;
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.getElementById('n-'+f).classList.add('active');
+    const titles = { all:'すべての契約', 締結済み:'締結済みの契約', 審議中:'審議中の契約', 更新待ち:'更新待ちの契約', 終了:'終了した契約', 解除:'解除した契約', expiring:'期限60日以内の契約', expired:'期限超過の契約' };
+    document.getElementById('page-title').textContent = titles[f] || '契約一覧';
+    render();
+  }
+
+  // ---- Edit ----
+  function openNew() {
+    editId = null;
+    document.getElementById('editTitle').textContent = '新規契約';
+    document.getElementById('delBtn').style.visibility = 'hidden';
+    ['name','party','owner','amount','memo'].forEach(k => document.getElementById('f-'+k).value='');
+    document.getElementById('f-type').value   = '業務委託';
+    document.getElementById('f-status').value = '審議中';
+    document.getElementById('f-start').value  = '';
+    document.getElementById('f-end').value    = '';
+    document.getElementById('f-cycle').value  = '';
+    document.getElementById('f-auto').value   = '0';
+    document.getElementById('f-notify').value = '60';
+    document.getElementById('editOv').classList.add('open');
+    setTimeout(() => document.getElementById('f-name').focus(), 50);
+  }
+
+  function openEdit(id) {
+    const c = contracts.find(c=>c.id===id); if(!c) return;
+    editId = id;
+    document.getElementById('editTitle').textContent = '契約を編集';
+    document.getElementById('delBtn').style.visibility = 'visible';
+    document.getElementById('f-name').value   = c.name;
+    document.getElementById('f-party').value  = c.party||'';
+    document.getElementById('f-owner').value  = c.owner||'';
+    document.getElementById('f-type').value   = c.type;
+    document.getElementById('f-status').value = c.status;
+    document.getElementById('f-start').value  = c.start||'';
+    document.getElementById('f-end').value    = c.end||'';
+    document.getElementById('f-amount').value = c.amount||'';
+    document.getElementById('f-cycle').value  = c.cycle||'';
+    document.getElementById('f-auto').value   = c.autoRenew||'0';
+    document.getElementById('f-notify').value = c.notify||'60';
+    document.getElementById('f-memo').value   = c.memo||'';
+    document.getElementById('editOv').classList.add('open');
+  }
+
+  function closeEdit(e) {
+    if (e && e.target !== document.getElementById('editOv')) return;
+    document.getElementById('editOv').classList.remove('open');
+  }
+
+  function saveContract() {
+    const name  = document.getElementById('f-name').value.trim();
+    const party = document.getElementById('f-party').value.trim();
+    if (!name) { document.getElementById('f-name').focus(); return; }
+
+    const data = {
+      name, party,
+      owner:     document.getElementById('f-owner').value.trim(),
+      type:      document.getElementById('f-type').value,
+      status:    document.getElementById('f-status').value,
+      start:     document.getElementById('f-start').value,
+      end:       document.getElementById('f-end').value,
+      amount:    document.getElementById('f-amount').value,
+      cycle:     document.getElementById('f-cycle').value,
+      autoRenew: document.getElementById('f-auto').value,
+      notify:    document.getElementById('f-notify').value,
+      memo:      document.getElementById('f-memo').value.trim(),
+      updated:   Date.now(),
+    };
+
+    if (editId) {
+      const idx = contracts.findIndex(c=>c.id===editId);
+      if (idx>=0) contracts[idx] = { ...contracts[idx], ...data };
+    } else {
+      contracts.unshift({ id: 'c'+Date.now(), checks: [], ...data });
+    }
+
+    save();
+    document.getElementById('editOv').classList.remove('open');
+    if (currentId) openDetail(currentId);
+    render();
+  }
+
+  function deleteContract() {
+    if (!editId || !confirm('この契約を削除しますか？')) return;
+    contracts = contracts.filter(c=>c.id!==editId);
+    save();
+    document.getElementById('editOv').classList.remove('open');
+    if (currentId===editId) closeSov();
+    render();
+  }
+
+  // ---- Detail ----
+  function openDetail(id) {
+    const c = contracts.find(c=>c.id===id); if(!c) return;
+    currentId = id;
+
+    document.getElementById('d-name').textContent  = c.name;
+    document.getElementById('d-party').textContent = c.party||'—';
+    document.getElementById('d-owner').textContent = c.owner||'—';
+    document.getElementById('d-type').innerHTML    = `<span class="type-chip">${escH(c.type)}</span>`;
+    document.getElementById('d-status').innerHTML  = `<span class="pill pill-${c.status}">${c.status}</span>`;
+    document.getElementById('d-start').textContent = fmtDate(c.start);
+    document.getElementById('d-end').textContent   = fmtDate(c.end);
+    document.getElementById('d-amount').textContent = c.amount ? fmtAmt(c.amount)+' 万円'+(c.cycle?'（'+c.cycle+'）':'') : '—';
+    document.getElementById('d-cycle').textContent  = c.cycle||'—';
+    document.getElementById('d-auto').textContent   = c.autoRenew==='1' ? 'あり' : 'なし';
+    document.getElementById('d-notify').textContent = c.notify ? c.notify+'日前' : '—';
+    document.getElementById('d-memo').value         = c.memo||'';
+
+    // Renewal box
+    const rb = document.getElementById('renewalBox');
+    const diff = daysDiff(c.end);
+    if (diff !== null && c.status !== '終了' && c.status !== '解除') {
+      if (diff < 0) {
+        rb.innerHTML = `<div class="renewal-box danger">🚨 契約期限が <strong>${Math.abs(diff)}日</strong> 超過しています。</div>`;
+      } else if (diff <= Number(c.notify||60)) {
+        rb.innerHTML = `<div class="renewal-box">⚠️ 契約終了まで <strong>${diff}日</strong>。${c.autoRenew==='1'?'自動更新あり。':'更新または終了の手続きを確認してください。'}</div>`;
+      } else {
+        rb.innerHTML = '';
+      }
+    } else {
+      rb.innerHTML = '';
+    }
+
+    // Timeline
+    const tlItems = [];
+    if (c.start) tlItems.push({ label: '契約開始', date: c.start, done: c.start <= today() });
+    if (c.end) {
+      const notifyDate = new Date(c.end);
+      notifyDate.setDate(notifyDate.getDate() - Number(c.notify||60));
+      const nd = notifyDate.toISOString().slice(0,10);
+      tlItems.push({ label: `更新通知タイミング（${c.notify||60}日前）`, date: nd, done: nd <= today() });
+      tlItems.push({ label: '契約終了', date: c.end, done: c.end < today() });
+    }
+    document.getElementById('d-timeline').innerHTML = tlItems.length ? tlItems.map(t => `
+      <div class="tl-item">
+        <div class="tl-dot ${t.done?'done':''}"></div>
+        <div class="tl-content">
+          ${escH(t.label)}
+          <div class="tl-date">${fmtDate(t.date)}</div>
+        </div>
+      </div>
+    `).join('') : '<div style="color:var(--gray);font-size:13px">日付未設定</div>';
+
+    renderChecks(c);
+    document.getElementById('sovBg').classList.add('open');
+  }
+
+  function closeSov(e) {
+    if (e && e.target !== document.getElementById('sovBg')) return;
+    document.getElementById('sovBg').classList.remove('open');
+    currentId = null;
+  }
+
+  function renderChecks(c) {
+    const el = document.getElementById('d-checks');
+    if (!c.checks || c.checks.length === 0) {
+      el.innerHTML = '<div style="color:var(--gray);font-size:13px">チェック項目なし</div>';
+      return;
+    }
+    el.innerHTML = c.checks.map((ch,i) => `
+      <div class="chk-item">
+        <input type="checkbox" ${ch.done?'checked':''} onchange="toggleCheck(${i})">
+        <span class="chk-txt ${ch.done?'done':''}">${escH(ch.text)}</span>
+        <button class="del-c" onclick="deleteCheck(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function toggleCheck(i) {
+    const c = contracts.find(c=>c.id===currentId); if(!c) return;
+    c.checks[i].done = !c.checks[i].done;
+    c.updated = Date.now();
+    save(); renderChecks(c); render();
+  }
+
+  function deleteCheck(i) {
+    const c = contracts.find(c=>c.id===currentId); if(!c) return;
+    c.checks.splice(i,1);
+    c.updated = Date.now();
+    save(); renderChecks(c); render();
+  }
+
+  function addCheck() {
+    const input = document.getElementById('newCheck');
+    const text = input.value.trim(); if(!text) return;
+    const c = contracts.find(c=>c.id===currentId); if(!c) return;
+    if (!c.checks) c.checks = [];
+    c.checks.push({ text, done: false });
+    c.updated = Date.now();
+    input.value = '';
+    save(); renderChecks(c); render();
+  }
+
+  document.getElementById('newCheck').addEventListener('keydown', e => { if(e.key==='Enter') addCheck(); });
+
+  let memoTimer;
+  function saveMemo() {
+    clearTimeout(memoTimer);
+    memoTimer = setTimeout(() => {
+      const c = contracts.find(c=>c.id===currentId); if(!c) return;
+      c.memo = document.getElementById('d-memo').value;
+      c.updated = Date.now(); save();
+    }, 600);
+  }
+
+  function setStatusFromDetail(s) {
+    const c = contracts.find(c=>c.id===currentId); if(!c) return;
+    c.status = s; c.updated = Date.now();
+    save(); openDetail(currentId); render();
+  }
+
+  function escH(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ---- Sample data ----
+  if (contracts.length === 0) {
+    const d = n => { const dt=new Date(); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
+    contracts = [
+      { id:'c1', name:'DXコンサルティング業務委託契約', party:'株式会社サンプル商事', owner:'山田', type:'業務委託', status:'締結済み', start: d(-90), end: d(45), amount:'200', cycle:'月額', autoRenew:'0', notify:'60', memo:'更新交渉は期限60日前から開始予定', checks:[{text:'契約書署名済み',done:true},{text:'請求書テンプレート確認',done:true},{text:'更新可否を先方に確認',done:false}], updated:Date.now() },
+      { id:'c2', name:'秘密保持契約（NDA）', party:'〇〇フーズ株式会社', owner:'鈴木', type:'NDA', status:'締結済み', start: d(-180), end: d(185), amount:'', cycle:'', autoRenew:'1', notify:'30', memo:'', checks:[], updated:Date.now()-1000 },
+      { id:'c3', name:'クラウドサービス利用契約', party:'SaaS Provider Inc.', owner:'山田', type:'サービス利用', status:'締結済み', start: d(-365), end: d(10), amount:'12', cycle:'月額', autoRenew:'1', notify:'60', memo:'自動更新のため要確認', checks:[{text:'来期プラン確認',done:false},{text:'利用状況レビュー',done:false}], updated:Date.now()-2000 },
+      { id:'c4', name:'オフィス賃貸借契約', party:'〇〇不動産株式会社', owner:'山田', type:'賃貸借', status:'締結済み', start: d(-730), end: d(250), amount:'15', cycle:'月額', autoRenew:'0', notify:'90', memo:'', checks:[], updated:Date.now()-3000 },
+      { id:'c5', name:'サッカーアドバイザリー契約', party:'NPO法人△△SC', owner:'山田', type:'業務委託', status:'審議中', start:'', end: d(60), amount:'50', cycle:'年額', autoRenew:'0', notify:'30', memo:'条件交渉中', checks:[{text:'契約書ドラフト送付',done:true},{text:'先方修正版受領',done:false},{text:'最終確認・署名',done:false}], updated:Date.now()-4000 },
+    ];
+    save();
+  }
+
+  render();
+</script>
+</body>
+</html>

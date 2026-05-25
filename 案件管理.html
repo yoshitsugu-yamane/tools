@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>案件管理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f8fc;
+      --white: #ffffff;
+      --border: #e4e7ef;
+      --text: #1a202c;
+      --muted: #718096;
+      --accent: #4f6ef7;
+      --accent-light: #eef1fe;
+      --red: #e53e3e;
+      --green: #38a169;
+      --orange: #d97706;
+      --gray: #a0aec0;
+      --radius: 12px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ---- Layout ---- */
+    .app { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 220px;
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+      gap: 4px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .sidebar-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; padding: 0 8px; }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .sidebar-item:hover { background: var(--bg); color: var(--text); }
+    .sidebar-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+
+    .badge {
+      margin-left: auto;
+      background: var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 99px;
+      padding: 1px 7px;
+    }
+    .sidebar-item.active .badge { background: var(--accent); color: #fff; }
+
+    .main { flex: 1; padding: 32px 28px; overflow-y: auto; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .topbar h2 { font-size: 22px; font-weight: 700; }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 9px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-ghost { background: none; border: 1.5px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: #fff5f5; color: var(--red); border: 1.5px solid #fed7d7; }
+    .btn-danger:hover { background: #fed7d7; }
+
+    /* ---- Dashboard cards ---- */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+    .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+
+    /* ---- Filters ---- */
+    .filter-row { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+    .filter-row input[type="text"] {
+      flex: 1; min-width: 160px;
+      padding: 9px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    .filter-row input[type="text"]:focus { border-color: var(--accent); }
+    .filter-row select {
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--white);
+      outline: none;
+    }
+
+    /* ---- Table ---- */
+    .table-wrap { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      background: #f9fafc;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; cursor: pointer; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafbff; }
+    td { padding: 13px 16px; vertical-align: middle; }
+
+    .project-name { font-weight: 600; color: var(--text); }
+    .project-client { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ---- Status badges ---- */
+    .status {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .status-進行中  { background: #ebf8ff; color: #2b6cb0; }
+    .status-未着手  { background: #f0fff4; color: #276749; }
+    .status-保留    { background: #fffff0; color: #975a16; }
+    .status-完了    { background: #f7fafc; color: var(--gray); }
+
+    .priority { font-size: 13px; font-weight: 600; }
+    .priority-高 { color: var(--red); }
+    .priority-中 { color: var(--orange); }
+    .priority-低 { color: var(--gray); }
+
+    .deadline { font-size: 13px; }
+    .deadline.overdue { color: var(--red); font-weight: 600; }
+    .deadline.soon    { color: var(--orange); font-weight: 600; }
+
+    .row-actions { display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s; }
+    tbody tr:hover .row-actions { opacity: 1; }
+
+    /* ---- Modal ---- */
+    .overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .overlay.open { display: flex; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    }
+
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-full { grid-column: 1 / -1; }
+
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+
+    input[type="text"], input[type="date"], select, textarea {
+      width: 100%;
+      padding: 10px 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+      background: var(--white);
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; }
+
+    /* ---- Detail panel ---- */
+    .detail-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 100;
+      justify-content: flex-end;
+    }
+    .detail-overlay.open { display: flex; }
+
+    .detail-panel {
+      background: var(--white);
+      width: 420px;
+      max-width: 95vw;
+      height: 100vh;
+      overflow-y: auto;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .detail-header h3 { font-size: 20px; font-weight: 700; line-height: 1.3; }
+    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); padding: 2px 6px; border-radius: 6px; }
+    .close-btn:hover { background: var(--bg); }
+
+    .detail-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .meta-item label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+    .meta-item .val { font-size: 14px; font-weight: 500; }
+
+    .section-title { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
+
+    .task-mini-list { display: flex; flex-direction: column; gap: 6px; }
+    .task-mini {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg);
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .task-mini input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+    .task-mini .task-txt.done { text-decoration: line-through; color: var(--gray); }
+    .task-mini .del-task { margin-left: auto; background: none; border: none; color: var(--gray); cursor: pointer; font-size: 14px; }
+    .task-mini .del-task:hover { color: var(--red); }
+
+    .add-task-row { display: flex; gap: 8px; }
+    .add-task-row input { flex: 1; }
+
+    .notes-area { width: 100%; }
+
+    .empty { text-align: center; color: var(--muted); padding: 48px 0; font-size: 14px; }
+
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .main { padding: 18px 14px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-title">案件管理</div>
+    <div class="sidebar-item active" onclick="setSideFilter('all')" id="sf-all">
+      <span>📋</span> すべて <span class="badge" id="cnt-all">0</span>
+    </div>
+    <div class="sidebar-item" onclick="setSideFilter('進行中')" id="sf-進行中">
+      <span>🔵</span> 進行中 <span class="badge" id="cnt-進行中">0</span>
+    </div>
+    <div class="sidebar-item" onclick="setSideFilter('未着手')" id="sf-未着手">
+      <span>🟢</span> 未着手 <span class="badge" id="cnt-未着手">0</span>
+    </div>
+    <div class="sidebar-item" onclick="setSideFilter('保留')" id="sf-保留">
+      <span>🟡</span> 保留 <span class="badge" id="cnt-保留">0</span>
+    </div>
+    <div class="sidebar-item" onclick="setSideFilter('完了')" id="sf-完了">
+      <span>⚪</span> 完了 <span class="badge" id="cnt-完了">0</span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <h2 id="page-title">すべての案件</h2>
+      <button class="btn btn-primary" onclick="openNew()">＋ 新規案件</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">進行中</div>
+        <div class="stat-value" id="s-進行中" style="color:#2b6cb0">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今月期限</div>
+        <div class="stat-value" id="s-month" style="color:#d97706">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">期限超過</div>
+        <div class="stat-value" id="s-overdue" style="color:#e53e3e">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">完了累計</div>
+        <div class="stat-value" id="s-完了" style="color:#38a169">0</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-row">
+      <input type="text" id="searchInput" placeholder="案件名・クライアント名で検索..." oninput="render()">
+      <select id="sortSelect" onchange="render()">
+        <option value="deadline">期限順</option>
+        <option value="priority">優先度順</option>
+        <option value="updated">更新順</option>
+        <option value="name">名前順</option>
+      </select>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>案件名 / クライアント</th>
+            <th>ステータス</th>
+            <th>優先度</th>
+            <th>期限</th>
+            <th>進捗</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="projectTable"></tbody>
+      </table>
+      <div id="emptyMsg" class="empty" style="display:none">案件がありません</div>
+    </div>
+  </main>
+</div>
+
+<!-- ---- 新規/編集モーダル ---- -->
+<div class="overlay" id="editOverlay" onclick="closeEdit(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="editTitle">新規案件</div>
+    <div class="form-grid">
+      <div class="form-full">
+        <label>案件名 *</label>
+        <input type="text" id="f-name" placeholder="例：〇〇社DX推進支援">
+      </div>
+      <div>
+        <label>クライアント名</label>
+        <input type="text" id="f-client" placeholder="例：株式会社〇〇">
+      </div>
+      <div>
+        <label>担当者</label>
+        <input type="text" id="f-owner" placeholder="例：山田">
+      </div>
+      <div>
+        <label>ステータス</label>
+        <select id="f-status">
+          <option>未着手</option>
+          <option>進行中</option>
+          <option>保留</option>
+          <option>完了</option>
+        </select>
+      </div>
+      <div>
+        <label>優先度</label>
+        <select id="f-priority">
+          <option>高</option>
+          <option selected>中</option>
+          <option>低</option>
+        </select>
+      </div>
+      <div>
+        <label>期限</label>
+        <input type="date" id="f-deadline">
+      </div>
+      <div>
+        <label>契約金額（万円）</label>
+        <input type="text" id="f-amount" placeholder="例：150">
+      </div>
+      <div class="form-full">
+        <label>メモ</label>
+        <textarea id="f-memo" placeholder="課題・背景・次のアクションなど"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="deleteBtn" onclick="deleteProject()" style="visibility:hidden">削除</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="closeEdit()">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveProject()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ---- 詳細パネル ---- -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="detail-panel" onclick="event.stopPropagation()">
+    <div class="detail-header">
+      <h3 id="d-name">案件名</h3>
+      <button class="close-btn" onclick="closeDetail()">✕</button>
+    </div>
+
+    <div class="detail-meta">
+      <div class="meta-item"><label>クライアント</label><div class="val" id="d-client">—</div></div>
+      <div class="meta-item"><label>担当者</label><div class="val" id="d-owner">—</div></div>
+      <div class="meta-item"><label>ステータス</label><div class="val" id="d-status">—</div></div>
+      <div class="meta-item"><label>優先度</label><div class="val" id="d-priority">—</div></div>
+      <div class="meta-item"><label>期限</label><div class="val" id="d-deadline">—</div></div>
+      <div class="meta-item"><label>契約金額</label><div class="val" id="d-amount">—</div></div>
+    </div>
+
+    <div>
+      <div class="section-title">チェックリスト</div>
+      <div class="task-mini-list" id="d-tasks"></div>
+      <div class="add-task-row" style="margin-top:8px">
+        <input type="text" id="newTaskInput" placeholder="タスクを追加...">
+        <button class="btn btn-primary" style="padding:9px 14px" onclick="addSubTask()">＋</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">メモ</div>
+      <textarea class="notes-area" id="d-memo" rows="5" oninput="saveMemo()" placeholder="メモを入力..."></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:auto">
+      <button class="btn btn-ghost" style="flex:1" onclick="openEdit(currentDetailId)">編集</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- データ ----
+  let projects = JSON.parse(localStorage.getItem('projects_v2') || '[]');
+  let sideFilter = 'all';
+  let editingId = null;
+  let currentDetailId = null;
+
+  const PRIO_ORDER = { '高': 0, '中': 1, '低': 2 };
+
+  function save() { localStorage.setItem('projects_v2', JSON.stringify(projects)); }
+
+  function today() { return new Date().toISOString().slice(0, 10); }
+
+  function deadlineClass(d) {
+    if (!d) return '';
+    const diff = (new Date(d) - new Date(today())) / 86400000;
+    if (diff < 0) return 'overdue';
+    if (diff <= 7) return 'soon';
+    return '';
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const [y, m, day] = d.split('-');
+    return `${y}/${m}/${day}`;
+  }
+
+  function taskProgress(p) {
+    if (!p.tasks || p.tasks.length === 0) return '';
+    const done = p.tasks.filter(t => t.done).length;
+    const pct = Math.round(done / p.tasks.length * 100);
+    return `<div style="display:flex;align-items:center;gap:6px">
+      <div style="flex:1;height:6px;background:#e4e7ef;border-radius:99px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:#4f6ef7;border-radius:99px"></div>
+      </div>
+      <span style="font-size:11px;color:#718096;white-space:nowrap">${done}/${p.tasks.length}</span>
+    </div>`;
+  }
+
+  // ---- Render ----
+  function render() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const sort = document.getElementById('sortSelect').value;
+
+    let list = projects.filter(p => {
+      if (sideFilter !== 'all' && p.status !== sideFilter) return false;
+      if (q && !p.name.toLowerCase().includes(q) && !((p.client || '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+
+    list.sort((a, b) => {
+      if (sort === 'deadline') {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return a.deadline.localeCompare(b.deadline);
+      }
+      if (sort === 'priority') return (PRIO_ORDER[a.priority] || 1) - (PRIO_ORDER[b.priority] || 1);
+      if (sort === 'updated')  return (b.updated || 0) - (a.updated || 0);
+      if (sort === 'name')     return a.name.localeCompare(b.name, 'ja');
+      return 0;
+    });
+
+    const tbody = document.getElementById('projectTable');
+    const emptyMsg = document.getElementById('emptyMsg');
+
+    if (list.length === 0) {
+      tbody.innerHTML = '';
+      emptyMsg.style.display = 'block';
+    } else {
+      emptyMsg.style.display = 'none';
+      tbody.innerHTML = list.map(p => `
+        <tr onclick="openDetail('${p.id}')">
+          <td>
+            <div class="project-name">${escHtml(p.name)}</div>
+            ${p.client ? `<div class="project-client">${escHtml(p.client)}</div>` : ''}
+          </td>
+          <td><span class="status status-${p.status}">${p.status}</span></td>
+          <td><span class="priority priority-${p.priority}">${p.priority}</span></td>
+          <td><span class="deadline ${deadlineClass(p.deadline)}">${fmtDate(p.deadline)}</span></td>
+          <td style="min-width:100px">${taskProgress(p)}</td>
+          <td>
+            <div class="row-actions" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px" onclick="openEdit('${p.id}')">編集</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Sidebar counts
+    ['all','進行中','未着手','保留','完了'].forEach(s => {
+      const cnt = s === 'all' ? projects.length : projects.filter(p => p.status === s).length;
+      document.getElementById('cnt-' + s).textContent = cnt;
+    });
+
+    // Stats
+    const now = new Date(today());
+    const thisMonth = today().slice(0, 7);
+    document.getElementById('s-進行中').textContent  = projects.filter(p => p.status === '進行中').length;
+    document.getElementById('s-完了').textContent    = projects.filter(p => p.status === '完了').length;
+    document.getElementById('s-overdue').textContent = projects.filter(p => p.deadline && new Date(p.deadline) < now && p.status !== '完了').length;
+    document.getElementById('s-month').textContent   = projects.filter(p => p.deadline && p.deadline.startsWith(thisMonth) && p.status !== '完了').length;
+  }
+
+  // ---- Sidebar filter ----
+  function setSideFilter(f) {
+    sideFilter = f;
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+    document.getElementById('sf-' + f).classList.add('active');
+    document.getElementById('page-title').textContent =
+      f === 'all' ? 'すべての案件' : f + 'の案件';
+    render();
+  }
+
+  // ---- Edit Modal ----
+  function openNew() {
+    editingId = null;
+    document.getElementById('editTitle').textContent = '新規案件';
+    document.getElementById('deleteBtn').style.visibility = 'hidden';
+    ['name','client','owner','amount','memo'].forEach(k => document.getElementById('f-'+k).value = '');
+    document.getElementById('f-status').value = '未着手';
+    document.getElementById('f-priority').value = '中';
+    document.getElementById('f-deadline').value = '';
+    document.getElementById('editOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('f-name').focus(), 50);
+  }
+
+  function openEdit(id) {
+    const p = projects.find(p => p.id === id);
+    if (!p) return;
+    editingId = id;
+    document.getElementById('editTitle').textContent = '案件を編集';
+    document.getElementById('deleteBtn').style.visibility = 'visible';
+    document.getElementById('f-name').value     = p.name;
+    document.getElementById('f-client').value   = p.client || '';
+    document.getElementById('f-owner').value    = p.owner || '';
+    document.getElementById('f-status').value   = p.status;
+    document.getElementById('f-priority').value = p.priority;
+    document.getElementById('f-deadline').value = p.deadline || '';
+    document.getElementById('f-amount').value   = p.amount || '';
+    document.getElementById('f-memo').value     = p.memo || '';
+    document.getElementById('editOverlay').classList.add('open');
+  }
+
+  function closeEdit(e) {
+    if (e && e.target !== document.getElementById('editOverlay')) return;
+    document.getElementById('editOverlay').classList.remove('open');
+  }
+
+  function saveProject() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { document.getElementById('f-name').focus(); return; }
+
+    const data = {
+      name,
+      client:   document.getElementById('f-client').value.trim(),
+      owner:    document.getElementById('f-owner').value.trim(),
+      status:   document.getElementById('f-status').value,
+      priority: document.getElementById('f-priority').value,
+      deadline: document.getElementById('f-deadline').value,
+      amount:   document.getElementById('f-amount').value.trim(),
+      memo:     document.getElementById('f-memo').value.trim(),
+      updated:  Date.now(),
+    };
+
+    if (editingId) {
+      const idx = projects.findIndex(p => p.id === editingId);
+      if (idx >= 0) { projects[idx] = { ...projects[idx], ...data }; }
+    } else {
+      projects.unshift({ id: 'p' + Date.now(), tasks: [], ...data });
+    }
+
+    save();
+    document.getElementById('editOverlay').classList.remove('open');
+    render();
+  }
+
+  function deleteProject() {
+    if (!editingId) return;
+    if (!confirm('この案件を削除しますか？')) return;
+    projects = projects.filter(p => p.id !== editingId);
+    save();
+    document.getElementById('editOverlay').classList.remove('open');
+    if (currentDetailId === editingId) closeDetail();
+    render();
+  }
+
+  // ---- Detail Panel ----
+  function openDetail(id) {
+    const p = projects.find(p => p.id === id);
+    if (!p) return;
+    currentDetailId = id;
+
+    document.getElementById('d-name').textContent     = p.name;
+    document.getElementById('d-client').textContent   = p.client || '—';
+    document.getElementById('d-owner').textContent    = p.owner  || '—';
+    document.getElementById('d-status').innerHTML     = `<span class="status status-${p.status}">${p.status}</span>`;
+    document.getElementById('d-priority').innerHTML   = `<span class="priority priority-${p.priority}">${p.priority}</span>`;
+    document.getElementById('d-deadline').textContent = fmtDate(p.deadline);
+    document.getElementById('d-amount').textContent   = p.amount ? p.amount + ' 万円' : '—';
+    document.getElementById('d-memo').value           = p.memo || '';
+    renderSubTasks(p);
+    document.getElementById('detailOverlay').classList.add('open');
+  }
+
+  function closeDetail(e) {
+    if (e && e.target !== document.getElementById('detailOverlay')) return;
+    document.getElementById('detailOverlay').classList.remove('open');
+    currentDetailId = null;
+  }
+
+  function renderSubTasks(p) {
+    const container = document.getElementById('d-tasks');
+    if (!p.tasks || p.tasks.length === 0) {
+      container.innerHTML = '<div style="color:#a0aec0;font-size:13px;padding:4px 0">タスクなし</div>';
+      return;
+    }
+    container.innerHTML = p.tasks.map((t, i) => `
+      <div class="task-mini">
+        <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleSubTask(${i})">
+        <span class="task-txt ${t.done ? 'done' : ''}">${escHtml(t.text)}</span>
+        <button class="del-task" onclick="deleteSubTask(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function toggleSubTask(i) {
+    const p = projects.find(p => p.id === currentDetailId);
+    if (!p) return;
+    p.tasks[i].done = !p.tasks[i].done;
+    p.updated = Date.now();
+    save(); renderSubTasks(p); render();
+  }
+
+  function deleteSubTask(i) {
+    const p = projects.find(p => p.id === currentDetailId);
+    if (!p) return;
+    p.tasks.splice(i, 1);
+    p.updated = Date.now();
+    save(); renderSubTasks(p); render();
+  }
+
+  function addSubTask() {
+    const input = document.getElementById('newTaskInput');
+    const text = input.value.trim();
+    if (!text) return;
+    const p = projects.find(p => p.id === currentDetailId);
+    if (!p) return;
+    if (!p.tasks) p.tasks = [];
+    p.tasks.push({ text, done: false });
+    p.updated = Date.now();
+    input.value = '';
+    save(); renderSubTasks(p); render();
+  }
+
+  let memoTimer;
+  function saveMemo() {
+    clearTimeout(memoTimer);
+    memoTimer = setTimeout(() => {
+      const p = projects.find(p => p.id === currentDetailId);
+      if (!p) return;
+      p.memo = document.getElementById('d-memo').value;
+      p.updated = Date.now();
+      save();
+    }, 600);
+  }
+
+  document.getElementById('newTaskInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addSubTask();
+  });
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // サンプルデータ（初回のみ）
+  if (projects.length === 0) {
+    projects = [
+      { id:'p1', name:'DX推進コンサル', client:'株式会社サンプル商事', owner:'山田', status:'進行中', priority:'高', deadline: addDays(14), amount:'200', memo:'経営会議用資料を来週までに作成', tasks:[{text:'現状ヒアリング',done:true},{text:'課題整理',done:true},{text:'提案書作成',done:false},{text:'経営会議プレゼン',done:false}], updated:Date.now() },
+      { id:'p2', name:'採用戦略策定支援', client:'〇〇フーズ株式会社', owner:'鈴木', status:'未着手', priority:'中', deadline: addDays(30), amount:'80', memo:'', tasks:[], updated:Date.now()-1000 },
+      { id:'p3', name:'サッカースクール運営アドバイザリー', client:'NPO法人△△', owner:'山田', status:'保留', priority:'低', deadline: addDays(-3), amount:'50', memo:'先方の予算確保待ち', tasks:[{text:'契約書確認',done:false}], updated:Date.now()-2000 },
+    ];
+    save();
+  }
+
+  function addDays(n) {
+    const d = new Date(); d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0,10);
+  }
+
+  render();
+</script>
+</body>
+</html>

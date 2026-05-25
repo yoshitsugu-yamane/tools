@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ビジネスツール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f6fa;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    h1 { font-size: 28px; font-weight: 800; color: #1a202c; margin-bottom: 8px; }
+    .sub { color: #718096; font-size: 15px; margin-bottom: 40px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 860px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px 26px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 6px 24px rgba(0,0,0,0.12); }
+    .icon { font-size: 36px; }
+    .card-title { font-size: 18px; font-weight: 700; color: #1a202c; }
+    .card-desc { font-size: 13.5px; color: #718096; line-height: 1.6; }
+    .tag {
+      display: inline-flex;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 11.5px;
+      font-weight: 600;
+      width: fit-content;
+    }
+    .tag-blue   { background: #eef2ff; color: #3b5bdb; }
+    .tag-green  { background: #d3f9d8; color: #1e5c2a; }
+    .tag-orange { background: #fff3bf; color: #7d5a00; }
+  </style>
+</head>
+<body>
+  <h1>ビジネスツール</h1>
+  <p class="sub">ブラウザで動く・データはローカル保存</p>
+
+  <div class="grid">
+    <a class="card" href="契約管理.html">
+      <div class="icon">📄</div>
+      <div class="card-title">契約管理</div>
+      <div class="card-desc">取引先との契約を一元管理。期限アラート・自動更新・チェックリスト付き。</div>
+      <span class="tag tag-blue">契約・法務</span>
+    </a>
+
+    <a class="card" href="案件管理.html">
+      <div class="icon">📋</div>
+      <div class="card-title">案件管理</div>
+      <div class="card-desc">進行中の案件をステータス・期限・優先度で管理。進捗バー・チェックリスト付き。</div>
+      <span class="tag tag-green">プロジェクト</span>
+    </a>
+
+    <a class="card" href="タスク管理.html">
+      <div class="icon">✅</div>
+      <div class="card-title">タスク管理</div>
+      <div class="card-desc">シンプルなToDoリスト。完了チェック・絞り込みができる軽量ツール。</div>
+      <span class="tag tag-orange">日常業務</span>
+    </a>
+  </div>
+</body>
+</html>
